@@ -16,7 +16,7 @@ struct NodeBoundingBox
 template<typename T>
 struct OctreeData
 {
-	OctreeData*		next;
+	OctreeData<T>*	next;
 	T*				object;
 
 	//
@@ -35,8 +35,7 @@ struct OctreeNode
 		:
 		children(nullptr),
 		parent(nullptr),
-		center(center),
-		halfSize(halfSize),
+		bound(NodeBoundingBox{ center, halfSize }),
 		objects(nullptr)
 	{
 
@@ -68,8 +67,8 @@ struct OctreeNode
 			return child->GetBound();
 
 		vec3 d{ (idx & 1) - 0.5f, ((idx >> 1) & 1) - 0.5f, ((idx >> 2 & 1)) - 0.5f };
-		vec3 c = center + d * halfSize;
-		return NodeBoundingBox{ c, halfSize * 0.5f };
+		vec3 c = bound.center + d * bound.halfSize;
+		return NodeBoundingBox{ c, bound.halfSize * 0.5f };
 	}
 
 	inline OctreeNode<T>* GetChild(size_t idx) const
@@ -83,14 +82,26 @@ struct OctreeNode
 	inline void SetChild(size_t idx, OctreeNode<T>* node)
 	{
 		if (nullptr == children)
-			children = new (OctreeNode*)[8]{ nullptr };
+			children = new OctreeNode*[8]{ nullptr };
 
 		children[idx] = node;
 	}
 
 	inline void Insert(T* object)
 	{
+		auto n = new OctreeData<T>{ nullptr, object };
 
+		if (nullptr == objects)
+		{
+			objects = n;
+		}
+		else
+		{
+			auto p = objects;
+			while (nullptr != p->next)
+				p = p->next;
+			p->next = n;
+		}
 	}
 };
 
@@ -106,6 +117,8 @@ public:
 
 	inline void Insert(T* object) { Insert(root, object, MAX_DEPTH); }
 
+	inline const Node* GetRoot() const { return root; }
+
 private:
 
 	inline void Insert(Node* node, T* object, int depth)
@@ -113,11 +126,11 @@ private:
 		const NodeBoundingBox& nbox = node->GetBound();
 		const AABB& obox = object->GetAABB();
 
-		if (nbox.Contains(obox))
+		if (AABB(nbox).Contains(obox))
 		{
 			if (depth > 0)
 			{
-				float halfSize = node->halfSize * 0.5f;
+				float halfSize = node->bound.halfSize * 0.5f;
 				for (size_t i = 0; i < 8; i++)
 				{
 					NodeBoundingBox childBound = node->GetChildBound(i);

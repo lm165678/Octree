@@ -2,6 +2,11 @@
 
 #include "Vector3.h"
 
+#pragma push_macro("max")
+#undef max
+#pragma push_macro("min")
+#undef min
+
 struct AABB
 {
 	vec3	min;
@@ -30,3 +35,6 @@ struct AABB
 			min.x <= other.min.z && other.max.z <= max.z;
 	}
 };
+
+#pragma pop_macro("min")
+#pragma pop_macro("max")
